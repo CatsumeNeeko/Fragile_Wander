@@ -6,16 +6,24 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField] float moveSpeed = 5f;
     [SerializeField] float rayDistance = 10f;
-    [SerializeField] LayerMask enemyLayer;
+    [SerializeField] List<LayerMask> enemyLayer;
     [SerializeField] GameObject sceneManager;
     private Vector2 moveDirection;
-    private Vector2 facingDirection = Vector2.up; // Default facing direction
+    private Vector2 facingDirection = Vector2.up;
     private Rigidbody2D rb;
+    private LineRenderer lineRenderer;
     private GameObject currentEnemy;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        lineRenderer = gameObject.AddComponent<LineRenderer>();
+        lineRenderer.startWidth = 0.05f;
+        lineRenderer.endWidth = 0.05f;
+        lineRenderer.material = new Material(Shader.Find("Sprites/Default")); // Basic material
+        lineRenderer.startColor = Color.red;
+        lineRenderer.endColor = Color.red;
+        lineRenderer.positionCount = 2;
     }
 
     void Update()
@@ -23,6 +31,7 @@ public class PlayerController : MonoBehaviour
         HandleMovement();
         HandleFacingDirection();
         ShootRaycast();
+        VisualizeRaycast();
     }
 
     void HandleMovement()
@@ -51,7 +60,7 @@ public class PlayerController : MonoBehaviour
 
     void ShootRaycast()
     {
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, facingDirection, rayDistance, enemyLayer);
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, facingDirection, rayDistance, enemyLayer[0]);
         Debug.DrawRay(transform.position, facingDirection * rayDistance, Color.red);
         if (hit.collider != null)
         {
@@ -70,7 +79,25 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
+    void VisualizeRaycast()
+    {
+        int layerMask = ~LayerMask.GetMask("Player");
 
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, facingDirection, rayDistance, layerMask);
+        Debug.Log(hit.collider.gameObject.name);
+        Vector2 endPoint = (Vector2)transform.position + (facingDirection * rayDistance);
+
+        // If the ray hits something with a valid tag, shorten it
+        if (hit.collider != null && (hit.collider.CompareTag("Wall") || hit.collider.CompareTag("Enemy") || hit.collider.CompareTag("Goal") || hit.collider.CompareTag("Object")))
+        {
+            endPoint = hit.point; // Stop at the collision point
+        }
+        else { }
+
+        // Update LineRenderer positions
+        lineRenderer.SetPosition(0, transform.position);
+        lineRenderer.SetPosition(1, endPoint);
+    }
     void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Enemy"))
